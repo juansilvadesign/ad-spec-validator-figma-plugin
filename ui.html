@@ -1,0 +1,1198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Ad Spec Validator</title>
+    <style>
+      :root {
+        --bg: #f7f7f5;
+        --panel: #ffffff;
+        --text: #171717;
+        --muted: #666b73;
+        --line: #d9d9d3;
+        --accent: #0f766e;
+        --accent-hover: #115e59;
+        --accent-subtle: rgba(15, 118, 110, 0.08);
+        --pass: #10b981;
+        --pass-bg: #ecfdf5;
+        --pass-text: #065f46;
+        --warn: #f59e0b;
+        --warn-bg: #fffbeb;
+        --warn-text: #92400e;
+        --fail: #ef4444;
+        --fail-bg: #fef2f2;
+        --fail-text: #991b1b;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font: 13px/1.45 Inter, ui-sans-serif, system-ui, -apple-system,
+          BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      .app {
+        display: flex;
+        min-height: 100vh;
+        flex-direction: column;
+        gap: 12px;
+        padding: 16px;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 700;
+        line-height: 1.2;
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        height: 24px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 650;
+        padding: 0 10px;
+        white-space: nowrap;
+        flex-shrink: 0;
+      }
+
+      .badge-pass {
+        background: var(--pass-bg);
+        color: var(--pass-text);
+      }
+
+      .badge-warn {
+        background: var(--warn-bg);
+        color: var(--warn-text);
+      }
+
+      .badge-fail {
+        background: var(--fail-bg);
+        color: var(--fail-text);
+      }
+
+      .badge-idle {
+        background: #f3f4f6;
+        color: var(--muted);
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        background: var(--panel);
+        padding: 12px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        color: var(--muted);
+        font-size: 11px;
+        font-weight: 650;
+        text-transform: uppercase;
+      }
+
+      select {
+        width: 100%;
+        height: 36px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--text);
+        font: inherit;
+        font-size: 13px;
+        padding: 0 10px;
+        outline: none;
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23666b73' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 10px center;
+        padding-right: 28px;
+      }
+
+      select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.14);
+      }
+
+      .frame-info {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .frame-info-item {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: #f9fafb;
+      }
+
+      .frame-info-label {
+        font-size: 10px;
+        font-weight: 650;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+
+      .frame-info-value {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .frame-info-full {
+        grid-column: 1 / -1;
+      }
+
+      .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 32px 16px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .empty-state-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 10px;
+        background: #f3f4f6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+      }
+
+      .empty-state-text {
+        font-size: 12px;
+        line-height: 1.5;
+        max-width: 240px;
+      }
+
+      /* --- Validation Report --- */
+
+      .report {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .report-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 4px;
+      }
+
+      .report-title {
+        font-size: 11px;
+        font-weight: 650;
+        text-transform: uppercase;
+        color: var(--muted);
+        letter-spacing: 0.04em;
+      }
+
+      .check {
+        display: grid;
+        grid-template-columns: 22px 1fr auto;
+        align-items: start;
+        gap: 8px;
+        padding: 8px 10px;
+        border-radius: 6px;
+        background: #f9fafb;
+        transition: background 0.15s;
+      }
+
+      .check-pass {
+        background: var(--pass-bg);
+      }
+
+      .check-warn {
+        background: var(--warn-bg);
+      }
+
+      .check-fail {
+        background: var(--fail-bg);
+      }
+
+      .check-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        flex-shrink: 0;
+      }
+
+      .check-icon-pass {
+        background: var(--pass);
+        color: #fff;
+      }
+
+      .check-icon-warn {
+        background: var(--warn);
+        color: #fff;
+      }
+
+      .check-icon-fail {
+        background: var(--fail);
+        color: #fff;
+      }
+
+      .check-body {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+
+      .check-name {
+        font-size: 12px;
+        font-weight: 650;
+        color: var(--text);
+      }
+
+      .check-detail {
+        font-size: 11px;
+        color: var(--muted);
+        line-height: 1.4;
+      }
+
+      .check-values {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--muted);
+        text-align: right;
+        white-space: nowrap;
+        padding-top: 2px;
+      }
+
+      /* --- Actions --- */
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: auto;
+      }
+
+      button {
+        height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        background: #fff;
+        color: var(--text);
+        cursor: pointer;
+        font: inherit;
+        font-weight: 650;
+        transition: background 0.12s, border-color 0.12s;
+      }
+
+      button:hover {
+        border-color: #b8bbb5;
+        background: #fafafa;
+      }
+
+      button.primary {
+        border-color: var(--accent);
+        background: var(--accent);
+        color: #fff;
+      }
+
+      button.primary:hover {
+        border-color: var(--accent-hover);
+        background: var(--accent-hover);
+      }
+
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+
+      /* --- Spec hint under selector --- */
+
+      .spec-hint {
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+        line-height: 1.4;
+      }
+
+      .spec-hint strong {
+        color: var(--text);
+        font-weight: 600;
+      }
+
+      /* --- Scrollable report --- */
+
+      .report-scroll {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header>
+        <h1>Ad Spec Validator</h1>
+        <span id="grade-badge" class="badge badge-idle">No selection</span>
+      </header>
+
+      <!-- Platform selector -->
+      <section class="panel">
+        <label>
+          Platform & Format
+          <select id="platform-select">
+            <optgroup label="Meta (Facebook / Instagram)">
+              <option value="meta-feed-image">Meta — Feed Image</option>
+              <option value="meta-feed-video">Meta — Feed Video</option>
+              <option value="meta-story-reel">Meta — Story / Reel</option>
+              <option value="meta-carousel">Meta — Carousel</option>
+              <option value="meta-right-column">Meta — Right Column</option>
+            </optgroup>
+            <optgroup label="Google Ads">
+              <option value="google-display-landscape">Google — Display Landscape</option>
+              <option value="google-display-square">Google — Display Square</option>
+              <option value="google-display-portrait">Google — Display Portrait</option>
+              <option value="google-youtube-thumb">Google — YouTube Thumbnail</option>
+            </optgroup>
+            <optgroup label="TikTok">
+              <option value="tiktok-infeed">TikTok — In-Feed</option>
+              <option value="tiktok-spark">TikTok — Spark Ad</option>
+            </optgroup>
+            <optgroup label="LinkedIn">
+              <option value="linkedin-sponsored-image">LinkedIn — Sponsored Image</option>
+              <option value="linkedin-carousel">LinkedIn — Carousel</option>
+              <option value="linkedin-video">LinkedIn — Video Ad</option>
+            </optgroup>
+            <optgroup label="X (Twitter)">
+              <option value="x-image">X — Image Ad</option>
+              <option value="x-carousel">X — Carousel</option>
+            </optgroup>
+            <optgroup label="Pinterest">
+              <option value="pinterest-standard">Pinterest — Standard Pin</option>
+              <option value="pinterest-idea">Pinterest — Idea Pin</option>
+            </optgroup>
+            <optgroup label="Snapchat">
+              <option value="snapchat-snap">Snapchat — Snap Ad</option>
+            </optgroup>
+          </select>
+        </label>
+        <div id="spec-hint" class="spec-hint"></div>
+      </section>
+
+      <!-- Frame info -->
+      <section id="frame-section" class="panel" style="display: none">
+        <div class="frame-info" id="frame-info"></div>
+      </section>
+
+      <!-- Empty state -->
+      <section id="empty-state" class="empty-state">
+        <div class="empty-state-icon">◻</div>
+        <div class="empty-state-text">
+          Select a frame, component, or group on the canvas to validate it
+          against the chosen ad spec.
+        </div>
+      </section>
+
+      <!-- Validation report -->
+      <section
+        id="report-section"
+        class="panel report-scroll"
+        style="display: none"
+      >
+        <div class="report" id="report"></div>
+      </section>
+
+      <!-- Actions -->
+      <section class="actions">
+        <button id="revalidate" type="button" disabled>Revalidate</button>
+        <button id="close" type="button">Close</button>
+      </section>
+    </main>
+
+    <script>
+      // ===================================================================
+      // AD SPEC DATABASE
+      // ===================================================================
+
+      var AD_SPECS = {
+        // --- Meta ---
+        "meta-feed-image": {
+          platform: "Meta",
+          format: "Feed Image",
+          width: 1080,
+          height: 1080,
+          ratioW: 1,
+          ratioH: 1,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Square format. Text overlay reduces reach."
+        },
+        "meta-feed-video": {
+          platform: "Meta",
+          format: "Feed Video",
+          width: 1080,
+          height: 1080,
+          ratioW: 1,
+          ratioH: 1,
+          ratioTolerance: 0.25,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Accepts 1:1 to 4:5. Square or portrait."
+        },
+        "meta-story-reel": {
+          platform: "Meta",
+          format: "Story / Reel",
+          width: 1080,
+          height: 1920,
+          ratioW: 9,
+          ratioH: 16,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: { top: 250, bottom: 250 },
+          notes: "Keep text/CTAs out of top & bottom 250px safe zones."
+        },
+        "meta-carousel": {
+          platform: "Meta",
+          format: "Carousel",
+          width: 1080,
+          height: 1080,
+          ratioW: 1,
+          ratioH: 1,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "All cards should be consistent 1:1."
+        },
+        "meta-right-column": {
+          platform: "Meta",
+          format: "Right Column",
+          width: 1200,
+          height: 628,
+          ratioW: 1.91,
+          ratioH: 1,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Landscape format for right column placement."
+        },
+
+        // --- Google ---
+        "google-display-landscape": {
+          platform: "Google",
+          format: "Display Landscape",
+          width: 1200,
+          height: 628,
+          ratioW: 1.91,
+          ratioH: 1,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Standard responsive display ad."
+        },
+        "google-display-square": {
+          platform: "Google",
+          format: "Display Square",
+          width: 1200,
+          height: 1200,
+          ratioW: 1,
+          ratioH: 1,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Square responsive display ad."
+        },
+        "google-display-portrait": {
+          platform: "Google",
+          format: "Display Portrait",
+          width: 900,
+          height: 1600,
+          ratioW: 9,
+          ratioH: 16,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Portrait responsive display ad."
+        },
+        "google-youtube-thumb": {
+          platform: "Google",
+          format: "YouTube Thumbnail",
+          width: 1280,
+          height: 720,
+          ratioW: 16,
+          ratioH: 9,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Standard 16:9 thumbnail."
+        },
+
+        // --- TikTok ---
+        "tiktok-infeed": {
+          platform: "TikTok",
+          format: "In-Feed",
+          width: 1080,
+          height: 1920,
+          ratioW: 9,
+          ratioH: 16,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: { bottom: 300 },
+          notes: "Bottom 300px overlapped by UI. Keep CTAs above."
+        },
+        "tiktok-spark": {
+          platform: "TikTok",
+          format: "Spark Ad",
+          width: 1080,
+          height: 1920,
+          ratioW: 9,
+          ratioH: 16,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: { bottom: 300 },
+          notes: "Same safe zones as In-Feed."
+        },
+
+        // --- LinkedIn ---
+        "linkedin-sponsored-image": {
+          platform: "LinkedIn",
+          format: "Sponsored Image",
+          width: 1200,
+          height: 627,
+          ratioW: 1.91,
+          ratioH: 1,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Landscape format for feed."
+        },
+        "linkedin-carousel": {
+          platform: "LinkedIn",
+          format: "Carousel",
+          width: 1080,
+          height: 1080,
+          ratioW: 1,
+          ratioH: 1,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Square carousel cards."
+        },
+        "linkedin-video": {
+          platform: "LinkedIn",
+          format: "Video Ad",
+          width: 1920,
+          height: 1080,
+          ratioW: 16,
+          ratioH: 9,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Landscape video format."
+        },
+
+        // --- X (Twitter) ---
+        "x-image": {
+          platform: "X",
+          format: "Image Ad",
+          width: 1200,
+          height: 675,
+          ratioW: 16,
+          ratioH: 9,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Landscape image ad."
+        },
+        "x-carousel": {
+          platform: "X",
+          format: "Carousel",
+          width: 800,
+          height: 800,
+          ratioW: 1,
+          ratioH: 1,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Square carousel cards."
+        },
+
+        // --- Pinterest ---
+        "pinterest-standard": {
+          platform: "Pinterest",
+          format: "Standard Pin",
+          width: 1000,
+          height: 1500,
+          ratioW: 2,
+          ratioH: 3,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "2:3 vertical pin."
+        },
+        "pinterest-idea": {
+          platform: "Pinterest",
+          format: "Idea Pin",
+          width: 1080,
+          height: 1920,
+          ratioW: 9,
+          ratioH: 16,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: null,
+          notes: "Full-screen vertical format."
+        },
+
+        // --- Snapchat ---
+        "snapchat-snap": {
+          platform: "Snapchat",
+          format: "Snap Ad",
+          width: 1080,
+          height: 1920,
+          ratioW: 9,
+          ratioH: 16,
+          ratioTolerance: 0.05,
+          textDensityWarn: 15,
+          textDensityFail: 20,
+          safeZones: { top: 150 },
+          notes: "Top 150px overlapped by Snapchat UI."
+        }
+      };
+
+      // ===================================================================
+      // DOM REFS
+      // ===================================================================
+
+      var platformSelect = document.getElementById("platform-select");
+      var specHint = document.getElementById("spec-hint");
+      var frameSection = document.getElementById("frame-section");
+      var frameInfo = document.getElementById("frame-info");
+      var emptyState = document.getElementById("empty-state");
+      var reportSection = document.getElementById("report-section");
+      var report = document.getElementById("report");
+      var gradeBadge = document.getElementById("grade-badge");
+      var revalidateBtn = document.getElementById("revalidate");
+      var closeBtn = document.getElementById("close");
+
+      var currentFrameData = null;
+
+      // ===================================================================
+      // SPEC HINT
+      // ===================================================================
+
+      function updateSpecHint() {
+        var spec = AD_SPECS[platformSelect.value];
+        if (!spec) {
+          specHint.innerHTML = "";
+          return;
+        }
+        var ratio = spec.ratioW + ":" + spec.ratioH;
+        var safe = spec.safeZones
+          ? " · Safe zones: " +
+            Object.keys(spec.safeZones)
+              .map(function (k) {
+                return k + " " + spec.safeZones[k] + "px";
+              })
+              .join(", ")
+          : "";
+        specHint.innerHTML =
+          "<strong>" +
+          spec.width +
+          " × " +
+          spec.height +
+          "</strong> · " +
+          ratio +
+          safe;
+      }
+
+      // ===================================================================
+      // FRAME INFO DISPLAY
+      // ===================================================================
+
+      function renderFrameInfo(data) {
+        if (!data) {
+          frameSection.style.display = "none";
+          emptyState.style.display = "flex";
+          reportSection.style.display = "none";
+          gradeBadge.className = "badge badge-idle";
+          gradeBadge.textContent = "No selection";
+          revalidateBtn.disabled = true;
+          return;
+        }
+
+        frameSection.style.display = "block";
+        emptyState.style.display = "none";
+        revalidateBtn.disabled = false;
+
+        frameInfo.innerHTML =
+          '<div class="frame-info-item frame-info-full">' +
+          '<span class="frame-info-label">Frame</span>' +
+          '<span class="frame-info-value">' +
+          escapeHtml(data.name) +
+          "</span>" +
+          "</div>" +
+          '<div class="frame-info-item">' +
+          '<span class="frame-info-label">Dimensions</span>' +
+          '<span class="frame-info-value">' +
+          data.width +
+          " × " +
+          data.height +
+          "</span>" +
+          "</div>" +
+          '<div class="frame-info-item">' +
+          '<span class="frame-info-label">Text Coverage</span>' +
+          '<span class="frame-info-value">' +
+          data.textAreaPercent +
+          "%</span>" +
+          "</div>";
+      }
+
+      // ===================================================================
+      // VALIDATION ENGINE
+      // ===================================================================
+
+      function validate(data, specKey) {
+        var spec = AD_SPECS[specKey];
+        if (!spec || !data) return [];
+
+        var checks = [];
+
+        // 1. Width check
+        var widthDiff = Math.abs(data.width - spec.width);
+        var widthPercent = (widthDiff / spec.width) * 100;
+        if (data.width === spec.width || data.width > spec.width) {
+          checks.push({
+            name: "Width",
+            status: "pass",
+            value: data.width + "px",
+            expected: spec.width + "px",
+            detail:
+              data.width === spec.width
+                ? "Exact match."
+                : "Larger than spec (" + spec.width + "px). Will be downscaled."
+          });
+        } else if (widthPercent <= 10) {
+          checks.push({
+            name: "Width",
+            status: "warn",
+            value: data.width + "px",
+            expected: spec.width + "px",
+            detail:
+              "Within 10% of spec. May lose quality when upscaled."
+          });
+        } else {
+          checks.push({
+            name: "Width",
+            status: "fail",
+            value: data.width + "px",
+            expected: spec.width + "px",
+            detail:
+              widthDiff +
+              "px off (" +
+              Math.round(widthPercent) +
+              "% deviation). Resize to " +
+              spec.width +
+              "px."
+          });
+        }
+
+        // 2. Height check
+        var heightDiff = Math.abs(data.height - spec.height);
+        var heightPercent = (heightDiff / spec.height) * 100;
+        if (data.height === spec.height || data.height > spec.height) {
+          checks.push({
+            name: "Height",
+            status: "pass",
+            value: data.height + "px",
+            expected: spec.height + "px",
+            detail:
+              data.height === spec.height
+                ? "Exact match."
+                : "Larger than spec (" +
+                  spec.height +
+                  "px). Will be downscaled."
+          });
+        } else if (heightPercent <= 10) {
+          checks.push({
+            name: "Height",
+            status: "warn",
+            value: data.height + "px",
+            expected: spec.height + "px",
+            detail:
+              "Within 10% of spec. May lose quality when upscaled."
+          });
+        } else {
+          checks.push({
+            name: "Height",
+            status: "fail",
+            value: data.height + "px",
+            expected: spec.height + "px",
+            detail:
+              heightDiff +
+              "px off (" +
+              Math.round(heightPercent) +
+              "% deviation). Resize to " +
+              spec.height +
+              "px."
+          });
+        }
+
+        // 3. Aspect ratio check
+        var currentRatio = data.width / data.height;
+        var specRatio = spec.ratioW / spec.ratioH;
+        var ratioDiff = Math.abs(currentRatio - specRatio) / specRatio;
+        var currentRatioLabel = simplifyRatio(data.width, data.height);
+        var specRatioLabel = spec.ratioW + ":" + spec.ratioH;
+
+        if (ratioDiff <= 0.01) {
+          checks.push({
+            name: "Aspect Ratio",
+            status: "pass",
+            value: currentRatioLabel,
+            expected: specRatioLabel,
+            detail: "Matches the required ratio."
+          });
+        } else if (ratioDiff <= spec.ratioTolerance) {
+          checks.push({
+            name: "Aspect Ratio",
+            status: "warn",
+            value: currentRatioLabel,
+            expected: specRatioLabel,
+            detail:
+              "Within tolerance (" +
+              Math.round(spec.ratioTolerance * 100) +
+              "%). Accepted but not ideal."
+          });
+        } else {
+          checks.push({
+            name: "Aspect Ratio",
+            status: "fail",
+            value: currentRatioLabel,
+            expected: specRatioLabel,
+            detail:
+              Math.round(ratioDiff * 100) +
+              "% off. Crop or resize to " +
+              specRatioLabel +
+              "."
+          });
+        }
+
+        // 4. Text density check
+        var textPct = data.textAreaPercent;
+        if (textPct <= spec.textDensityWarn) {
+          checks.push({
+            name: "Text Density",
+            status: "pass",
+            value: textPct + "%",
+            expected: "≤" + spec.textDensityWarn + "%",
+            detail:
+              data.textNodeCount === 0
+                ? "No text layers detected."
+                : "Text coverage within safe range."
+          });
+        } else if (textPct <= spec.textDensityFail) {
+          checks.push({
+            name: "Text Density",
+            status: "warn",
+            value: textPct + "%",
+            expected: "≤" + spec.textDensityWarn + "%",
+            detail:
+              "High text coverage may reduce ad reach, especially on Meta."
+          });
+        } else {
+          checks.push({
+            name: "Text Density",
+            status: "fail",
+            value: textPct + "%",
+            expected: "≤" + spec.textDensityWarn + "%",
+            detail:
+              "Exceeds " +
+              spec.textDensityFail +
+              "% threshold. Reduce text overlay to improve delivery."
+          });
+        }
+
+        // 5. Safe zone check
+        if (spec.safeZones && data.textPositions && data.textPositions.length > 0) {
+          var violations = [];
+          var frameH = data.frameHeight;
+
+          for (var i = 0; i < data.textPositions.length; i++) {
+            var tp = data.textPositions[i];
+
+            if (spec.safeZones.top) {
+              if (tp.relativeTop < spec.safeZones.top) {
+                violations.push(
+                  '"' +
+                    tp.name +
+                    '" enters top safe zone (' +
+                    Math.round(tp.relativeTop) +
+                    "px from top, limit " +
+                    spec.safeZones.top +
+                    "px)"
+                );
+              }
+            }
+
+            if (spec.safeZones.bottom) {
+              var bottomLimit = frameH - spec.safeZones.bottom;
+              if (tp.relativeBottom > bottomLimit) {
+                violations.push(
+                  '"' +
+                    tp.name +
+                    '" enters bottom safe zone (' +
+                    Math.round(frameH - tp.relativeBottom) +
+                    "px from bottom, limit " +
+                    spec.safeZones.bottom +
+                    "px)"
+                );
+              }
+            }
+          }
+
+          if (violations.length === 0) {
+            checks.push({
+              name: "Safe Zones",
+              status: "pass",
+              value: "Clear",
+              expected: "No overlap",
+              detail: "All text layers are outside safe zone areas."
+            });
+          } else {
+            checks.push({
+              name: "Safe Zones",
+              status: "fail",
+              value: violations.length + " issue" + (violations.length > 1 ? "s" : ""),
+              expected: "No overlap",
+              detail: violations.join(". ") + "."
+            });
+          }
+        } else if (spec.safeZones) {
+          checks.push({
+            name: "Safe Zones",
+            status: "pass",
+            value: "Clear",
+            expected: "No overlap",
+            detail: "No text layers to check against safe zones."
+          });
+        }
+
+        return checks;
+      }
+
+      // ===================================================================
+      // RENDER REPORT
+      // ===================================================================
+
+      function renderReport(checks) {
+        if (checks.length === 0) {
+          reportSection.style.display = "none";
+          return;
+        }
+
+        reportSection.style.display = "block";
+
+        var hasAnyFail = false;
+        var hasAnyWarn = false;
+
+        var html =
+          '<div class="report-header">' +
+          '<span class="report-title">Validation Report</span>' +
+          "</div>";
+
+        for (var i = 0; i < checks.length; i++) {
+          var c = checks[i];
+          if (c.status === "fail") hasAnyFail = true;
+          if (c.status === "warn") hasAnyWarn = true;
+
+          var icon = c.status === "pass" ? "✓" : c.status === "warn" ? "!" : "✗";
+
+          html +=
+            '<div class="check check-' +
+            c.status +
+            '">' +
+            '<div class="check-icon check-icon-' +
+            c.status +
+            '">' +
+            icon +
+            "</div>" +
+            '<div class="check-body">' +
+            '<div class="check-name">' +
+            c.name +
+            "</div>" +
+            '<div class="check-detail">' +
+            escapeHtml(c.detail) +
+            "</div>" +
+            "</div>" +
+            '<div class="check-values">' +
+            escapeHtml(c.value) +
+            "<br/>" +
+            '<span style="color: var(--muted); font-weight: 500">→ ' +
+            escapeHtml(c.expected) +
+            "</span>" +
+            "</div>" +
+            "</div>";
+        }
+
+        report.innerHTML = html;
+
+        // Update grade badge
+        if (hasAnyFail) {
+          gradeBadge.className = "badge badge-fail";
+          gradeBadge.textContent = "✗ Fail";
+        } else if (hasAnyWarn) {
+          gradeBadge.className = "badge badge-warn";
+          gradeBadge.textContent = "⚠ Warning";
+        } else {
+          gradeBadge.className = "badge badge-pass";
+          gradeBadge.textContent = "✓ Pass";
+        }
+      }
+
+      // ===================================================================
+      // HELPERS
+      // ===================================================================
+
+      function gcd(a, b) {
+        a = Math.abs(Math.round(a));
+        b = Math.abs(Math.round(b));
+        while (b) {
+          var t = b;
+          b = a % b;
+          a = t;
+        }
+        return a;
+      }
+
+      function simplifyRatio(w, h) {
+        if (h === 0) return w + ":0";
+        var g = gcd(w, h);
+        var sw = Math.round(w / g);
+        var sh = Math.round(h / g);
+        // If ratio numbers are too large, show decimal
+        if (sw > 50 || sh > 50) {
+          return (w / h).toFixed(2) + ":1";
+        }
+        return sw + ":" + sh;
+      }
+
+      function escapeHtml(str) {
+        var div = document.createElement("div");
+        div.appendChild(document.createTextNode(str));
+        return div.innerHTML;
+      }
+
+      // ===================================================================
+      // RUN VALIDATION
+      // ===================================================================
+
+      function runValidation() {
+        if (!currentFrameData) return;
+        var checks = validate(currentFrameData, platformSelect.value);
+        renderReport(checks);
+      }
+
+      // ===================================================================
+      // EVENT HANDLERS
+      // ===================================================================
+
+      platformSelect.addEventListener("change", function () {
+        updateSpecHint();
+        runValidation();
+      });
+
+      revalidateBtn.addEventListener("click", function () {
+        parent.postMessage(
+          { pluginMessage: { type: "request-selection" } },
+          "*"
+        );
+      });
+
+      closeBtn.addEventListener("click", function () {
+        parent.postMessage({ pluginMessage: { type: "close" } }, "*");
+      });
+
+      // ===================================================================
+      // MESSAGES FROM MAIN THREAD
+      // ===================================================================
+
+      window.onmessage = function (event) {
+        var msg = event.data.pluginMessage;
+        if (!msg) return;
+
+        if (msg.type === "selection") {
+          currentFrameData = msg.data;
+          renderFrameInfo(msg.data);
+
+          if (msg.data) {
+            runValidation();
+          } else {
+            reportSection.style.display = "none";
+            if (msg.reason) {
+              document.querySelector(".empty-state-text").textContent =
+                msg.reason;
+            } else {
+              document.querySelector(".empty-state-text").textContent =
+                "Select a frame, component, or group on the canvas to validate it against the chosen ad spec.";
+            }
+          }
+        }
+      };
+
+      // ===================================================================
+      // INIT
+      // ===================================================================
+
+      updateSpecHint();
+    </script>
+  </body>
+</html>

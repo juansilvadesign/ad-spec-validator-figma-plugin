@@ -134,6 +134,12 @@ figma.ui.onmessage = function (message) {
   }
 
   if (message.type === "close") {
+    figma.notify("❤️ Thanks for using Ad Spec Validator! ✨");
     figma.closePlugin();
   }
 };
+
+// Also show toast when closed via the native X button
+figma.on("close", function () {
+  figma.notify("❤️ Thanks for using Ad Spec Validator! ✨");
+});
